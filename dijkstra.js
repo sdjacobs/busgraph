@@ -1,6 +1,16 @@
 d3.dijkstra = function () {
     var dijkstra = {}, nodes, edges, source, dispatch = d3.dispatch("start", "tick", "step", "end");
     
+    var update = function(node) {
+        node.links.forEach(function(link) {
+            var tar = link.target;
+            if (!tar.visited) {
+                var dist = current.distance + link.value;
+                tar.distance = Math.min(dist, tar.distance);
+            }
+        });
+    };
+
     dijkstra.run = function (src) {
         source = src;
         var unvisited = [];
@@ -18,14 +28,10 @@ d3.dijkstra = function () {
 
         function tick() {
             current.visited = true;
-            current.links.forEach(function(link) {
-                var tar = link.target;
-                if (!tar.visited) {
-                    var dist = current.distance + link.value;
-                    tar.distance = Math.min(dist, tar.distance);
-                }
-            });
-            if (unvisited.length == 0) {
+        
+            update(current);
+
+            if (unvisited.length == 0 || current.distance == Infinity) {
                 dispatch.end()
                 return true;
             }
@@ -36,10 +42,7 @@ d3.dijkstra = function () {
             current = unvisited.pop()
 
             dispatch.tick();
-            if (current.distance == Infinity) {
-                dispatch.end()
-                return true;
-            }
+            
             return false;
         }
 
@@ -55,14 +58,14 @@ d3.dijkstra = function () {
         }
     };
    
-   dijkstra.edges = function (_) {
-        if (!arguments.length)
-            return edges;
-        else {
-            edges = _;
-            return dijkstra;
-        }
-    };
+   dijkstra.update = function (_) {
+       if (!arguments.length)
+           return update;
+       else {
+           update = _;
+           return dijkstra;
+       }
+   };
 
    dijkstra.source = function(_) {
         if (!arguments.length)
@@ -72,7 +75,6 @@ d3.dijkstra = function () {
             return dijkstra;
         }
     };
-
     
    dispatch.on("start.code", dijkstra.run);
    
