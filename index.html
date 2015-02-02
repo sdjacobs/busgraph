@@ -112,8 +112,20 @@ function main(nodes) {
       node.attr("r", 2)
   });
 
-    
-
+   var color = d3.scale.linear()
+        .domain([0, 10])
+        .range(["green", "yellow"]);  
+     
+  d3.json("dist.json", function(e, D) {
+          if (e)
+          console.log(e)
+      node.on("click", function(_, i) {
+        node.forEach(function(d, j) {
+            d.distance = D[i][j];
+        });
+        node.style("fill", function(d) { return color(d.distance); }); 
+      });
+  });
 
 
 }
