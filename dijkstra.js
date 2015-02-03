@@ -26,7 +26,6 @@ d3.dijkstra = function () {
         var current = src;
         current.distance = 0;
 
-        //var ti = 0;
         function tick() {
             current.visited = true;
         
@@ -37,18 +36,12 @@ d3.dijkstra = function () {
                 return true;
             }
            
-
-            // no longer needed because we can updateItem
-            //unvisited.heapify(); 
+            // We would sort the unvisited list here, but we hope that our update function does it for us.
 
             current = unvisited.pop()
 
-            //if (ti > 100) {
-              dispatch.tick();
-            //  ti = 0;
-            //}
+            dispatch.tick();
             
-            //ti += 1;
             return false;
         }
 
