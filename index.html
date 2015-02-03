@@ -2,23 +2,10 @@
 <meta charset="utf-8">
 <style>
 
-.stroke {
-  fill: none;
-  stroke: #000;
-  stroke-width: .5;
-}
-
-
 .node {
   stroke: #fff;
   stroke-width: 0.5px;
 }
-
-.link {
-  stroke: #999;
-  stroke-opacity: .6;
-}
-
 
 </style>
 <body>
@@ -30,6 +17,12 @@
 <script src="dijkstra.js"></script>
 <script src="matrix.js"></script>
 <script>
+
+/* 
+   TODO: * try out canvas
+         * add time feature
+         * add legend 8:00-9:00
+*/
 
 var width = 900,
   height = 600;
@@ -63,8 +56,6 @@ function parseTrips(trips) {
     
     if (i+1 < trips.length && t.trip_id == trips[i+1].trip_id)
       t.next = trips[i+1];
-
-
   }
   
   return tripsByStop;
