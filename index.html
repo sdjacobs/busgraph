@@ -22,83 +22,195 @@
 
 </style>
 <body>
+<div id="status"></div>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="http://d3js.org/d3.geo.tile.v0.min.js"></script>
 <script src="d3.mapzoom.js"></script>
 <script src="dijkstra.js"></script>
+<script src="matrix.js"></script>
 <script>
 
 var width = 900,
-    height = 600;
+  height = 600;
 
 var center = [-87.6847, 41.8369], scale = 70000;
 
 var mapzoom = d3.mapzoom()
-    .center(center)
-    .scale(scale)
+  .center(center)
+  .scale(scale)
 
 var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .call(mapzoom);
+  .attr("width", width)
+  .attr("height", height)
+  .call(mapzoom);
 
 var frame = svg.append("g")
 
 mapzoom.addTileLayer(frame, "tiles.mapbox.com/v3/examples.map-zr0njcqy/", "abcd");
 
-d3.csv("stops.txt", main);
+d3.csv("stops.txt", function(nodes) { 
+  d3.csv("stop_times.txt", function(stoptimes) {
+    main(nodes, stoptimes);
+  });
+});
 
-function main(nodes) {
+function parseStops_(stops, D, id2index) {
+  stops.forEach(function(s) {
+    s.departure_time = s.departure_time.split(':').map(parseFloat);
+    s.arrival_time = s.arrival_time.split(':').map(parseFloat);
+  });
+  var tid, currentStops, prev;
+  var links = [];
+
+  for (var i = 0; i < stops.length; i++) {
+    
+    var s = stops[i];
+    if (s.trip_id != tid) {
+      tid = s.trip_id;
+      currentStops = [];
+      prev = s;
+      continue;
+    }
+  }
+}
+
+
+function parseTrips(trips) {
+  
+  var progress = d3.dispatch("tick");
+  
+
+  var tripsByStop = {};
+  var i = 0, delta = 100;
+
+  progress.on("tick", function() {
+    d3.select("#status").text("Status: " + i + " out of " + trips.length);
+  });
+
+  function tick() {
+   
+    for (; i < Math.min(trips.length, i+100); i++) {
+      
+      var t = trips[i];
+      if (!tripsByStop[t.stop_id])
+        tripsByStop[t.stop_id] = [t];
+      else //if (tripsByStop[t.stop_id].length < 2)
+        tripsByStop[t.stop_id].push(t);
+    
+      t.index = i;
+
+      //if (i < trips.length - 1 && t.trip_id == trips[i+1].trip_id)
+      //  t.next = trips[i+1]
+
+    }
+
+    progress.tick();
+    
+    return i >= trips.length;
+
+    
+  }
+
+  d3.timer(tick);
+}
+
+function timediff(a, b) {
+  return (b[0] - a[0]) * 3600 + (b[1] - a[1]) * 60 + (b[2] - a[2]);
+}
+
+function main(nodes, trips) {
 
   var projection = mapzoom.projection(), 
-      nodesByName = {}
+    nodesByName = {}
   
-  nodes.forEach(function(d) {
+  nodes.forEach(function(d, i) {
     d.coord = [+d.stop_lon, +d.stop_lat]
     nodesByName[d.name] = d;
+    d.index = i;
   });
 
   var node = svg.append("g").selectAll(".node")
-        .data(nodes)
-       .enter().append("circle")
-       .attr("class", "node")
-      .attr("r", 2)
-      .attr("fill", "grey")
-      
+    .data(nodes)
+     .enter().append("circle")
+     .attr("class", "node")
+    .attr("r", 2)
+    .attr("fill", "grey")
+    
   node
-      .append("title")
-      .text(function(d) { return d.stop_desc })
+    .append("title")
+    .text(function(d) { return d.stop_desc })
 
-   mapzoom.addLayer(function() {
-      node
-          .each(function(d) { d.proj = projection(d.coord); })
-          .attr("transform", function(d) { return "translate(" + d.proj + ")" }) 
-   });
-      
+  mapzoom.addLayer(function() {
+    node
+      .each(function(d) { d.proj = projection(d.coord); })
+      .attr("transform", function(d) { return "translate(" + d.proj + ")" }) 
+  });
+    
   node.each(function(d) {
-      d.selection = d3.select(this);
+    d.selection = d3.select(this);
   });
 
   node.on("mouseover", function(d) {
-      d3.select(this)
-        .attr("r", 5)
+    d3.select(this)
+    .attr("r", 5)
   });
 
   node.on("mouseout", function(d) {
-      node.attr("r", 2)
+    node.attr("r", 2)
   });
 
   var color = d3.scale.linear()
-        .domain([0, 10])
-        .range(["green", "yellow"]);  
-     
+    .domain([0, 10])
+    .range(["green", "yellow"]);  
+   
+
+  //var D = matrix(nodes.length, nodes.length, Infinity);
+  //parseStops(stoptimes, D);
+
+  var tripsByStop = parseTrips(trips); 
 
   var quadtree = d3.geom.quadtree()
     .x(function(d) { return d.coord[0] })
     .y(function(d) { return d.coord[1] })
    
   var root = quadtree(nodes);
-    
+
+  /* How do you update a node? */
+  /* For all neighbors n, if n has not been visited, set D(n) = min(D(n), D through current node */
+  function update(current) {
+    var i = current.stop_id;
+    for (var j = 0; j < nodes.length; j++) {
+       var n = nodes[j];
+       if (j == i || n.visited || D(i, j) == Infinity)
+          continue;
+       var dist = current.distance + D(i, j);
+       n.distance = Math.min(n.distance, dist); 
+    }
+  }
+
+  var dijkstra = d3.dijkstra()
+      .nodes(nodes)
+      .update(update);
+ 
+  var color = d3.scale.linear()
+    .domain([0, 1000, 2500])
+    .range(["green", "yellow", "red"]);
+
+  dijkstra.on("tick", function() {
+      node.style("fill", function(d) { return color(d.distance); });
+  });
+
+  dijkstra.on("end", function() {
+    var name = dijkstra.source().name;
+    node.select("title")
+        .text(function(d) { return d.name + "\n(" + d.distance + " miles from " + name + ")" });
+  });
+
+  node.on("click", dijkstra.start);
+  
+  
+
+  function thunk() { 
   node.on("click", function(r) {
     node.attr("fill", "grey"); /* unselect */
     r.selection.attr("fill", "red");
@@ -106,40 +218,38 @@ function main(nodes) {
     /* Make nodes within 15 mi green? other visited nodes red? */
     var rx = r.coord[0], ry = r.coord[1], delta = 2;
     root.visit(function(d, x1, y1, x2, y2) { 
-       var m = pointRectDist(rx, ry, x1, y1, x2-x1, y2-y1);
-       var insquare = rx > x1 && rx < x2 && ry > y1 && ry < y2;
-       if (d.leaf)
-           d.point.selection.attr("fill", m < delta ? "green" : "red");
-       return !insquare && m >= delta;
+      var m = pointRectDist(rx, ry, x1, y1, x2-x1, y2-y1);
+      var insquare = rx > x1 && rx < x2 && ry > y1 && ry < y2;
+      if (d.leaf)
+        d.point.selection.attr("fill", m < delta ? "green" : "red");
+      return !insquare && m >= delta;
     });
   });
+  }
 
 }
-      
+    
 function pointRectDist (px, py, rx, ry, rwidth, rheight)
 {
-    var cx = Math.max(Math.min(px, rx+rwidth ), rx);
-    var cy = Math.max(Math.min(py, ry+rheight), ry);
-    return haversine(cx, cy, px, py);
+  var cx = Math.max(Math.min(px, rx+rwidth ), rx);
+  var cy = Math.max(Math.min(py, ry+rheight), ry);
+  return haversine(cx, cy, px, py);
 }
 
 // http://stackoverflow.com/questions/15736995/how-can-i-quickly-estimate-the-distance-between-two-latitude-longitude-points
 function haversine(lon1, lat1, lon2, lat2) {
-    var deg2rad = function(x) { return x * Math.PI / 180 };
-    lon1 = deg2rad(lon1);
-    lat1 = deg2rad(lat1);
-    lon2 = deg2rad(lon2);
-    lat2 = deg2rad(lat2);
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
-    a = Math.pow(Math.sin(dlat/2),2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dlon/2), 2)
-    c = 2 * Math.asin(Math.sqrt(a)) 
-    mi = 3956 * c
-    return mi
+  var deg2rad = function(x) { return x * Math.PI / 180 };
+  lon1 = deg2rad(lon1);
+  lat1 = deg2rad(lat1);
+  lon2 = deg2rad(lon2);
+  lat2 = deg2rad(lat2);
+  dlon = lon2 - lon1 
+  dlat = lat2 - lat1 
+  a = Math.pow(Math.sin(dlat/2),2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dlon/2), 2)
+  c = 2 * Math.asin(Math.sqrt(a)) 
+  mi = 3956 * c
+  return mi
 }
-
-/* How do you update a node? */
-/* For all neighbors n, if n has not been visited, set D(n) = min(D(n), D through current node */
 
 </script>
 
