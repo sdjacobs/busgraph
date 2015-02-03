@@ -22,6 +22,7 @@
    TODO: * try out canvas
          * add time feature
          * add legend 8:00-9:00
+         * trip recovery
 */
 
 var width = 900,
@@ -125,7 +126,7 @@ d3.csv("stops.txt", function(stops) {
       .update(update); /* Custom node updating function */
  
   var color = d3.scale.linear()
-    .domain([0, 45, 90])
+    .domain([0, 30, 60])
     .range(["green", "yellow", "red"]);
 
   //dijkstra.on("tick", function() {
@@ -138,7 +139,28 @@ d3.csv("stops.txt", function(stops) {
         .text(function(d) { return d.name + "\n(" + d.distance + " miles from " + name + ")" });
   });
 
-  node.on("click", dijkstra.start);
+  node.on("click", function(d) {
+    var content = d3.select("body").append("div")
+    content.append("div").html("<b>Start:</b> " + d.stop_desc);
+    content = content.append("div")
+    node.on("click", function(dst) {
+        content.selectAll("div").remove();
+        var src = dst, trips = [];
+        content.append("div").html("<b>End:</b> " + dst.stop_desc);
+
+        while(src.prev) {
+          trips.unshift(src);
+          src = src.prev.stop;
+        }
+        content.append("div")
+            .selectAll("div")
+            .data(trips).enter()
+            .append("div")
+            .html(function(d, i) { return "<i>" + d.prev.stop.stop_name + "</i> to <i>" + d.stop_name + "</i> via " + d.prev.mode + " (" + (d.distance -d.prev.stop.distance) + " min)" });
+    });
+
+    dijkstra.start(d);
+  });
 
 
   /* How do you update a node? */
@@ -164,10 +186,14 @@ d3.csv("stops.txt", function(stops) {
 
         if (stop.visited)
             return true;
-        stop.distance = Math.min(stop.distance, current.distance + tripdiff(trip, next));
-        unvisited.updateItem(stop);
-        stop.selection.style("fill", color(stop.distance));
 
+        var dist = current.distance + tripdiff(trip, next);
+        if (dist < stop.distance) {
+            stop.distance = dist;
+            stop.prev = {mode: "CTA", data: trip, stop: current}
+            unvisited.updateItem(stop);
+            stop.selection.style("fill", color(stop.distance));
+        }
         //trip.next = undefined; /* We've visited this trip */  
         trip = next;
 
@@ -186,9 +212,13 @@ d3.csv("stops.txt", function(stops) {
       var insquare = cx > x1 && cx < x2 && cy > y1 && cy < y2;
       if (d.leaf && m < delta && !d.point.visited) {
         var stop = d.point;
-        stop.distance = Math.min(d.point.distance, current.distance + m * 60); // m mi * 60 min/mi (crawling as the crow flies!)
-        unvisited.updateItem(stop);
-        stop.selection.style("fill", color(stop.distance));
+        var dist = current.distance + m * 60; // m mi * 60 min/mi (crawling as the crow flies!)
+        if (dist < stop.distance) {
+          stop.distance = dist;
+          stop.prev = {mode: "walk", data: m, stop: current}
+          unvisited.updateItem(stop);
+          stop.selection.style("fill", color(stop.distance));
+        }
       }
       return !insquare && m >= delta;
     });
