@@ -26,7 +26,7 @@
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="http://d3js.org/d3.geo.tile.v0.min.js"></script>
 <script src="d3.mapzoom.js"></script>
-<script src="https://raw.githubusercontent.com/adamhooper/js-priority-queue/master/priority-queue.min.js"></script>
+<script src="heap.js"></script>
 <script src="dijkstra.js"></script>
 <script src="matrix.js"></script>
 <script>
@@ -73,46 +73,25 @@ function parseStops_(stops, D, id2index) {
 
 function parseTrips(trips) {
   
-  var progress = d3.dispatch("tick", "end");
   
 
   var tripsByStop = {};
-  var i = 0, delta = 100;
 
-  progress.on("tick", function() {
-    d3.select("#status").text("Status: " + i + " out of " + trips.length);
-  });
 
-  function tick() {
    
-    for (; i < Math.min(trips.length, i+10); i++) {
+    for (var i = 0; i < trips.length; i++) {
       
       var t = trips[i];
       if (!tripsByStop[t.stop_id])
         tripsByStop[t.stop_id] = [t];
-      else //if (tripsByStop[t.stop_id].length < 2)
+      else 
         tripsByStop[t.stop_id].push(t);
     
       t.index = i;
 
-      //if (i < trips.length - 1 && t.trip_id == trips[i+1].trip_id)
-      //  t.next = trips[i+1]
 
     }
-
-    progress.tick();
-   
-    if (i >= trips.length)
-        progress.end(tripsByStop)
-
-
-    return i >= trips.length;
-
-    
-  }
-
-  d3.timer(tick);
-  return progress;
+    return tripsByStop;
 }
 
 /* in minutes */
@@ -178,10 +157,9 @@ d3.csv("stops.txt", function(nodes) {
 
   var tripsByStop, trips;
   
-  d3.csv("stop_times.txt", function(data) {
+  d3.csv("stop_times_8.txt", function(data) {
     trips = data;
-    var progress = parseTrips(trips); 
-    progress.on("end", function(d) { tripsByStop = d });
+    tripsByStop = parseTrips(trips); 
   });
 
   var quadtree = d3.geom.quadtree()
@@ -192,27 +170,36 @@ d3.csv("stops.txt", function(nodes) {
 
   /* How do you update a node? */
   /* For all neighbors n, if n has not been visited, set D(n) = min(D(n), D through current node */
-  function update(current) {
+  var updated = 0;
+  function update(current, unvisited) {
+    updated++;
     var mytrips = tripsByStop[current.stop_id];//.map(function(t) { return trips[t.index + 1]; });
     if (!mytrips)
       return;
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < mytrips.length; i++) {
       var trip = mytrips[i];
+      if (!trip)
+          continue;
       var next = trips[trip.index + 1];
+      if (!next)
+          continue;
       if (trip.trip_id != next.trip_id)
         continue;
       var stop = nodesByID[next.stop_id]
       if (stop.visited)
         continue;
       stop.distance = Math.min(stop.distance, current.distance + tripdiff(trip, next));
+      unvisited.updateItem(stop);
     }
 
-    var cx = current.coord[0], cy = current.coord[1], delta = 1.5;
+    var cx = current.coord[0], cy = current.coord[1], delta = 1;
     root.visit(function(d, x1, y1, x2, y2) { 
       var m = pointRectDist(cx, cy, x1, y1, x2-x1, y2-y1);
       var insquare = cx > x1 && cx < x2 && cy > y1 && cy < y2;
-      if (d.leaf && m < delta && !d.point.visited)
-        d.point.distance = Math.min(d.point.distance, current.distance + m * 30); // m mi * 30 min/mi
+      if (d.leaf && m < delta && !d.point.visited) {
+        d.point.distance = Math.min(d.point.distance, current.distance + m * 90); // m mi * 90 min/mi (crawling as the crow flies!)
+        unvisited.updateItem(d.point);
+      }
       return !insquare && m >= delta;
     });
 
@@ -228,6 +215,7 @@ d3.csv("stops.txt", function(nodes) {
 
   dijkstra.on("tick", function() {
       node.style("fill", function(d) { return color(d.distance); });
+      d3.select("#status").text("Status: " + updated + " out of " + nodes.length);
   });
 
   dijkstra.on("end", function() {
@@ -261,6 +249,7 @@ function haversine(lon1, lat1, lon2, lat2) {
   mi = 3956 * c
   return mi
 }
+
 
 </script>
 

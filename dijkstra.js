@@ -13,7 +13,7 @@ d3.dijkstra = function () {
 
     dijkstra.run = function (src) {
         source = src;
-        var unvisited = [];
+        var unvisited = new Heap(function(a, b) { return a.distance - b.distance });
 
         nodes.forEach(function (d) {
             if (d != src) {
@@ -26,23 +26,29 @@ d3.dijkstra = function () {
         var current = src;
         current.distance = 0;
 
+        var ti = 0;
         function tick() {
             current.visited = true;
         
-            update(current);
+            update(current, unvisited);
 
             if (unvisited.length == 0 || current.distance == Infinity) {
                 dispatch.end()
                 return true;
             }
-            unvisited.sort(function(a, b) {
-                return b.distance - a.distance 
-            });
+           
+
+            // no longer needed because we can updateItem
+            //unvisited.heapify(); 
 
             current = unvisited.pop()
 
-            dispatch.tick();
+            if (ti > 100) {
+              dispatch.tick();
+              ti = 0;
+            }
             
+            ti += 1;
             return false;
         }
 
