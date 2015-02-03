@@ -73,11 +73,8 @@ function parseStops_(stops, D, id2index) {
 
 function parseTrips(trips) {
   
-  
 
   var tripsByStop = {};
-
-
    
     for (var i = 0; i < trips.length; i++) {
       
@@ -88,6 +85,9 @@ function parseTrips(trips) {
         tripsByStop[t.stop_id].push(t);
     
       t.index = i;
+
+      if (i+1 < trips.length && t.trip_id == trips[i+1].trip_id)
+          t.next = trips[i+1];
 
 
     }
@@ -170,26 +170,49 @@ d3.csv("stops.txt", function(nodes) {
 
   /* How do you update a node? */
   /* For all neighbors n, if n has not been visited, set D(n) = min(D(n), D through current node */
-  var updated = 0;
+  var updated = 0; 
   function update(current, unvisited) {
+    
     updated++;
+    
     var mytrips = tripsByStop[current.stop_id];//.map(function(t) { return trips[t.index + 1]; });
+    
     if (!mytrips)
       return;
     for (var i = 0; i < mytrips.length; i++) {
       var trip = mytrips[i];
       if (!trip)
           continue;
-      var next = trips[trip.index + 1];
-      if (!next)
-          continue;
-      if (trip.trip_id != next.trip_id)
-        continue;
-      var stop = nodesByID[next.stop_id]
-      if (stop.visited)
-        continue;
-      stop.distance = Math.min(stop.distance, current.distance + tripdiff(trip, next));
-      unvisited.updateItem(stop);
+      
+      var explore = d3.dispatch("stop");
+      
+      function tick() {
+        var next = trip.next;    
+        if (next == undefined)
+            return true;
+
+        var stop = nodesByID[next.stop_id]
+
+        if (stop.visited)
+            return true;
+        stop.distance = Math.min(stop.distance, current.distance + tripdiff(trip, next));
+        unvisited.updateItem(stop);
+      
+        trip.next = undefined; /* We've visited this trip */  
+        trip = next;
+
+        explore.stop(stop);
+
+        return (trip.next == undefined);
+      }
+
+      explore.on("stop", function(d) {
+        d.selection.style("fill", "blue");
+      });
+
+      d3.timer(tick);
+      //while (!tick());
+          
     }
 
     var cx = current.coord[0], cy = current.coord[1], delta = 1;
@@ -215,7 +238,6 @@ d3.csv("stops.txt", function(nodes) {
 
   dijkstra.on("tick", function() {
       node.style("fill", function(d) { return color(d.distance); });
-      d3.select("#status").text("Status: " + updated + " out of " + nodes.length);
   });
 
   dijkstra.on("end", function() {

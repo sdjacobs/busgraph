@@ -26,7 +26,7 @@ d3.dijkstra = function () {
         var current = src;
         current.distance = 0;
 
-        var ti = 0;
+        //var ti = 0;
         function tick() {
             current.visited = true;
         
@@ -43,12 +43,12 @@ d3.dijkstra = function () {
 
             current = unvisited.pop()
 
-            if (ti > 100) {
+            //if (ti > 100) {
               dispatch.tick();
-              ti = 0;
-            }
+            //  ti = 0;
+            //}
             
-            ti += 1;
+            //ti += 1;
             return false;
         }
 
