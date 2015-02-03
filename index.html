@@ -47,78 +47,47 @@ var svg = d3.select("body").append("svg")
 
 var frame = svg.append("g")
 
-//mapzoom.addTileLayer(frame, "tiles.mapbox.com/v3/examples.map-zr0njcqy/", "abcd");
-
-
-function parseStops_(stops, D, id2index) {
-  stops.forEach(function(s) {
-    s.departure_time = s.departure_time.split(':').map(parseFloat);
-    s.arrival_time = s.arrival_time.split(':').map(parseFloat);
-  });
-  var tid, currentStops, prev;
-  var links = [];
-
-  for (var i = 0; i < stops.length; i++) {
-    
-    var s = stops[i];
-    if (s.trip_id != tid) {
-      tid = s.trip_id;
-      currentStops = [];
-      prev = s;
-      continue;
-    }
-  }
-}
-
+mapzoom.addTileLayer(frame, "tiles.mapbox.com/v3/examples.map-zr0njcqy/", "abcd");
 
 function parseTrips(trips) {
   
-
   var tripsByStop = {};
    
-    for (var i = 0; i < trips.length; i++) {
+  for (var i = 0; i < trips.length; i++) {
       
-      var t = trips[i];
-      if (!tripsByStop[t.stop_id])
-        tripsByStop[t.stop_id] = [t];
-      else 
-        tripsByStop[t.stop_id].push(t);
+    var t = trips[i];
+    if (!tripsByStop[t.stop_id])
+      tripsByStop[t.stop_id] = [t];
+    else 
+      tripsByStop[t.stop_id].push(t);
     
-      t.index = i;
-
-      if (i+1 < trips.length && t.trip_id == trips[i+1].trip_id)
-          t.next = trips[i+1];
+    if (i+1 < trips.length && t.trip_id == trips[i+1].trip_id)
+      t.next = trips[i+1];
 
 
-    }
-    return tripsByStop;
-}
-
-/* in minutes */
-function timediff(a, b) {
-  return (b[0] - a[0]) * 60 + (b[1] - a[1]) + (b[2] - a[2])/60;
+  }
+  
+  return tripsByStop;
 }
 
 function tripdiff(x, y) {
-  var xx = x.arrival_time.split(':').map(parseFloat);
-  var yy = y.departure_time.split(':').map(parseFloat);
-  return timediff(xx, yy);
+  var a = x.arrival_time.split(':').map(parseFloat);
+  var b = y.departure_time.split(':').map(parseFloat);
+  return (b[0] - a[0]) * 60 + (b[1] - a[1]) + (b[2] - a[2])/60;
 }
 
-
-d3.csv("stops.txt", function(nodes) { 
+d3.csv("stops.txt", function(stops) { 
 
   var projection = mapzoom.projection(), 
-    nodesByID = {}
+    stopsByID = {}
   
-  nodes.forEach(function(d, i) {
+  stops.forEach(function(d, i) {
     d.coord = [+d.stop_lon, +d.stop_lat]
-    nodesByID[d.stop_id] = d;
-    d.index = i;
+    stopsByID[d.stop_id] = d;
   });
 
   var node = svg.append("g").selectAll(".node")
-    .data(nodes)
+    .data(stops)
      .enter().append("circle")
      .attr("class", "node")
     .attr("r", 2)
@@ -140,22 +109,14 @@ d3.csv("stops.txt", function(nodes) {
 
   node.on("mouseover", function(d) {
     d3.select(this)
-    .attr("r", 5)
+        .attr("r", 5)
   });
 
   node.on("mouseout", function(d) {
     node.attr("r", 2)
   });
 
-  var color = d3.scale.linear()
-    .domain([0, 10])
-    .range(["green", "yellow"]);  
-   
-
-  //var D = matrix(nodes.length, nodes.length, Infinity);
-  //parseStops(stoptimes, D);
-
-  var tripsByStop, trips;
+  var tripsByStop, trips; /* These variables are populated asynchronously (but not used til click) */
   
   d3.csv("stop_times_8.txt", function(data) {
     trips = data;
@@ -166,71 +127,11 @@ d3.csv("stops.txt", function(nodes) {
     .x(function(d) { return d.coord[0] })
     .y(function(d) { return d.coord[1] })
    
-  var root = quadtree(nodes);
-
-  /* How do you update a node? */
-  /* For all neighbors n, if n has not been visited, set D(n) = min(D(n), D through current node */
-  var updated = 0; 
-  function update(current, unvisited) {
-    
-    updated++;
-    
-    var mytrips = tripsByStop[current.stop_id];//.map(function(t) { return trips[t.index + 1]; });
-    
-    if (!mytrips)
-      return;
-    for (var i = 0; i < mytrips.length; i++) {
-      var trip = mytrips[i];
-      if (!trip)
-          continue;
-      
-      var explore = d3.dispatch("stop");
-      
-      function tick() {
-        var next = trip.next;    
-        if (next == undefined)
-            return true;
-
-        var stop = nodesByID[next.stop_id]
-
-        if (stop.visited)
-            return true;
-        stop.distance = Math.min(stop.distance, current.distance + tripdiff(trip, next));
-        unvisited.updateItem(stop);
-      
-        trip.next = undefined; /* We've visited this trip */  
-        trip = next;
-
-        explore.stop(stop);
-
-        return (trip.next == undefined);
-      }
-
-      explore.on("stop", function(d) {
-        d.selection.style("fill", "blue");
-      });
-
-      d3.timer(tick);
-      //while (!tick());
-          
-    }
-
-    var cx = current.coord[0], cy = current.coord[1], delta = 1;
-    root.visit(function(d, x1, y1, x2, y2) { 
-      var m = pointRectDist(cx, cy, x1, y1, x2-x1, y2-y1);
-      var insquare = cx > x1 && cx < x2 && cy > y1 && cy < y2;
-      if (d.leaf && m < delta && !d.point.visited) {
-        d.point.distance = Math.min(d.point.distance, current.distance + m * 90); // m mi * 90 min/mi (crawling as the crow flies!)
-        unvisited.updateItem(d.point);
-      }
-      return !insquare && m >= delta;
-    });
-
-  }
+  var root = quadtree(stops);
 
   var dijkstra = d3.dijkstra()
-      .nodes(nodes)
-      .update(update);
+      .nodes(stops)
+      .update(update); /* Custom node updating function */
  
   var color = d3.scale.linear()
     .domain([0, 45, 90])
@@ -247,6 +148,59 @@ d3.csv("stops.txt", function(nodes) {
   });
 
   node.on("click", dijkstra.start);
+
+
+  /* How do you update a node? */
+  /* For all neighbors n, if n has not been visited, set D(n) = min(D(n), D through current node */
+  function update(current, unvisited) {
+    
+    /* First, check neighbors reachable by CTA */
+    var mytrips = tripsByStop[current.stop_id];
+    
+    if (!mytrips)
+      return;
+    for (var i = 0; i < mytrips.length; i++) {
+      var trip = mytrips[i];
+      if (!trip)
+          continue;
+      
+      function explorestop() {
+        var next = trip.next;    
+        if (next == undefined)
+            return true;
+
+        var stop = stopsByID[next.stop_id]
+
+        if (stop.visited)
+            return true;
+        stop.distance = Math.min(stop.distance, current.distance + tripdiff(trip, next));
+        unvisited.updateItem(stop);
+      
+        //trip.next = undefined; /* We've visited this trip */  
+        trip = next;
+
+
+        return (trip.next == undefined);
+      }
+
+      while (!explorestop()); /* This allows us to give up the runloop so we don't time out. */ 
+          
+    }
+
+    /* Now, any walkable neighbors? */
+    var cx = current.coord[0], cy = current.coord[1], delta = 1;
+    root.visit(function(d, x1, y1, x2, y2) { 
+      var m = pointRectDist(cx, cy, x1, y1, x2-x1, y2-y1);
+      var insquare = cx > x1 && cx < x2 && cy > y1 && cy < y2;
+      if (d.leaf && m < delta && !d.point.visited) {
+        var stop = d.point;
+        stop.distance = Math.min(d.point.distance, current.distance + m * 60); // m mi * 60 min/mi (crawling as the crow flies!)
+        unvisited.updateItem(stop);
+      }
+      return !insquare && m >= delta;
+    });
+
+  }
     
 });
     
