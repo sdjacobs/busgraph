@@ -128,9 +128,9 @@ d3.csv("stops.txt", function(stops) {
     .domain([0, 45, 90])
     .range(["green", "yellow", "red"]);
 
-  dijkstra.on("tick", function() {
-      node.style("fill", function(d) { return color(d.distance); });
-  });
+  //dijkstra.on("tick", function() {
+  //    node.style("fill", function(d) { return color(d.distance); });
+  //});
 
   dijkstra.on("end", function() {
     var name = dijkstra.source().name;
@@ -166,7 +166,8 @@ d3.csv("stops.txt", function(stops) {
             return true;
         stop.distance = Math.min(stop.distance, current.distance + tripdiff(trip, next));
         unvisited.updateItem(stop);
-      
+        stop.selection.style("fill", color(stop.distance));
+
         //trip.next = undefined; /* We've visited this trip */  
         trip = next;
 
@@ -187,6 +188,7 @@ d3.csv("stops.txt", function(stops) {
         var stop = d.point;
         stop.distance = Math.min(d.point.distance, current.distance + m * 60); // m mi * 60 min/mi (crawling as the crow flies!)
         unvisited.updateItem(stop);
+        stop.selection.style("fill", color(stop.distance));
       }
       return !insquare && m >= delta;
     });
