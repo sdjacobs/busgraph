@@ -68,6 +68,11 @@ function tripdiff(x, y) {
   return (b[0] - a[0]) * 60 + (b[1] - a[1]) + (b[2] - a[2])/60;
 }
 
+function getMinutes(x) {
+    var xm = x.split(':').map(parseFloat)
+    return xm[1] + (xm[2]/60)
+}
+
 d3.csv("stops.txt", function(stops) { 
 
   var projection = mapzoom.projection(), 
@@ -156,7 +161,12 @@ d3.csv("stops.txt", function(stops) {
             .selectAll("div")
             .data(trips).enter()
             .append("div")
-            .html(function(d, i) { return "<i>" + d.prev.stop.stop_name + "</i> to <i>" + d.stop_name + "</i> via " + d.prev.mode + " (" + (d.distance -d.prev.stop.distance) + " min)" });
+            .html(function(d, i) {
+               var p = d.prev.stop
+               var m = d.distance - p.distance
+               console.log(d.prev.data)
+               return "<i>" + p.stop_name + "</i> to <i>" + d.stop_name + "</i> via " + d.prev.mode + " (" + p.distance + " to " + d.distance +")" 
+            });
     });
 
     dijkstra.start(d);
@@ -170,38 +180,53 @@ d3.csv("stops.txt", function(stops) {
     /* First, check neighbors reachable by CTA */
     var mytrips = tripsByStop[current.stop_id];
     
+
     if (!mytrips)
       return;
     for (var i = 0; i < mytrips.length; i++) {
-      var trip = mytrips[i];
-      if (!trip)
+      var start = mytrips[i], curr = start;
+
+      if (!start)
           continue;
       
-      function explorestop() {
-        var next = trip.next;    
+      var depart = getMinutes(start.departure_time);
+      if (depart < current.distance)
+          continue;
+      
+      while(1) {
+        var next = curr.next;    
         if (next == undefined)
-            return true;
+            break;
 
         var stop = stopsByID[next.stop_id]
 
         if (stop.visited)
-            return true;
+            break;
+    
+        /*
+        if ((+next.stop_sequence - +start.stop_sequence) > 35) {
+        console.log(start)
+        console.log(next)
+        console.log(tripdiff(start, next))
+        thunk()
+        }
+        */
 
-        var dist = current.distance + tripdiff(trip, next);
-        if (dist < stop.distance) {
-            stop.distance = dist;
-            stop.prev = {mode: "CTA", data: trip, stop: current}
+        var arrival = getMinutes(next.arrival_time);
+        if (arrival < stop.distance) {
+            stop.distance = arrival;
+            /* Current -> Wait -> Stop */
+            var wait = {distance: depart, prev: {mode: "wait", stop: current} } // ghost node!
+            stop.prev = {mode: "CTA", data: curr, stop: wait}
             unvisited.updateItem(stop);
             stop.selection.style("fill", color(stop.distance));
         }
         //trip.next = undefined; /* We've visited this trip */  
-        trip = next;
+        
+        curr = next;
 
-
-        return (trip.next == undefined);
       }
 
-      while (!explorestop()); /* This allows us to give up the runloop so we don't time out. */ 
           
     }
 
