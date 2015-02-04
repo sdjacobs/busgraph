@@ -7,6 +7,30 @@
   stroke-width: 0.5px;
 }
 
+span.mode {
+    color: red;
+}
+
+span.stop {
+    color: blue;
+}
+
+span.route {
+    color: green;
+}
+
+.axis path {
+    display: none;
+}
+
+.axis line {
+    stroke: #fff;
+}
+
+.axis text {
+    fill: white;
+}
+
 </style>
 <body>
 <div id="status"></div>
@@ -15,7 +39,6 @@
 <script src="d3.mapzoom.js"></script>
 <script src="heap.js"></script>
 <script src="dijkstra.js"></script>
-<script src="matrix.js"></script>
 <script>
 
 /* 
@@ -30,6 +53,10 @@ var width = 900,
 
 var center = [-87.6847, 41.8369], scale = 70000;
 
+  
+var color = d3.scale.linear()
+  .domain([0, 40, 80])
+  .range(["green", "yellow", "red"]);
 var mapzoom = d3.mapzoom()
   .center(center)
   .scale(scale)
@@ -43,35 +70,19 @@ var frame = svg.append("g")
 
 mapzoom.addTileLayer(frame, "tiles.mapbox.com/v3/examples.map-zr0njcqy/", "abcd");
 
-function parseTrips(trips) {
+var routeByTrip = {}
+d3.csv("routes.txt", function(routes) {
+  var routeByID = {}
+  routes.forEach(function(d) {
+    routeByID[d.route_id] = d.route_short_name + " " + d.route_long_name;
+  });
   
-  var tripsByStop = {};
-   
-  for (var i = 0; i < trips.length; i++) {
-      
-    var t = trips[i];
-    if (!tripsByStop[t.stop_id])
-      tripsByStop[t.stop_id] = [t];
-    else 
-      tripsByStop[t.stop_id].push(t);
-    
-    if (i+1 < trips.length && t.trip_id == trips[i+1].trip_id)
-      t.next = trips[i+1];
-  }
-  
-  return tripsByStop;
-}
-
-function tripdiff(x, y) {
-  var a = x.arrival_time.split(':').map(parseFloat);
-  var b = y.departure_time.split(':').map(parseFloat);
-  return (b[0] - a[0]) * 60 + (b[1] - a[1]) + (b[2] - a[2])/60;
-}
-
-function getMinutes(x) {
-    var xm = x.split(':').map(parseFloat)
-    return xm[1] + (xm[2]/60)
-}
+  d3.csv("trips.txt", function(trips) {
+    trips.forEach(function(d) {
+        routeByTrip[d.trip_id] = routeByID[d.route_id] + " (" + d.direction + ")";
+    });
+  });
+});
 
 d3.csv("stops.txt", function(stops) { 
 
@@ -130,10 +141,6 @@ d3.csv("stops.txt", function(stops) {
       .nodes(stops)
       .update(update); /* Custom node updating function */
  
-  var color = d3.scale.linear()
-    .domain([0, 30, 60])
-    .range(["green", "yellow", "red"]);
-
   //dijkstra.on("tick", function() {
   //    node.style("fill", function(d) { return color(d.distance); });
   //});
@@ -157,16 +164,12 @@ d3.csv("stops.txt", function(stops) {
           trips.unshift(src);
           src = src.prev.stop;
         }
+
         content.append("div")
             .selectAll("div")
             .data(trips).enter()
             .append("div")
-            .html(function(d, i) {
-               var p = d.prev.stop
-               var m = d.distance - p.distance
-               console.log(d.prev.data)
-               return "<i>" + p.stop_name + "</i> to <i>" + d.stop_name + "</i> via " + d.prev.mode + " (" + p.distance + " to " + d.distance +")" 
-            });
+            .html(printNode)
     });
 
     dijkstra.start(d);
@@ -185,14 +188,13 @@ d3.csv("stops.txt", function(stops) {
       return;
     for (var i = 0; i < mytrips.length; i++) {
       var start = mytrips[i], curr = start;
-
       if (!start)
           continue;
-      
       var depart = getMinutes(start.departure_time);
       if (depart < current.distance)
           continue;
       
+      /* Check from here to the end of the line */
       while(1) {
         var next = curr.next;    
         if (next == undefined)
@@ -203,31 +205,17 @@ d3.csv("stops.txt", function(stops) {
         if (stop.visited)
             break;
     
-        /*
-        if ((+next.stop_sequence - +start.stop_sequence) > 35) {
-        console.log(start)
-        console.log(next)
-        console.log(tripdiff(start, next))
-        thunk()
-        }
-        */
-
         var arrival = getMinutes(next.arrival_time);
         if (arrival < stop.distance) {
             stop.distance = arrival;
             /* Current -> Wait -> Stop */
-            var wait = {distance: depart, prev: {mode: "wait", stop: current} } // ghost node!
+            var wait = {distance: depart, stop_name: current.stop_name, prev: {mode: "wait", stop: current} } // ghost node!
             stop.prev = {mode: "CTA", data: curr, stop: wait}
             unvisited.updateItem(stop);
             stop.selection.style("fill", color(stop.distance));
         }
-        //trip.next = undefined; /* We've visited this trip */  
-        
         curr = next;
-
       }
-
-          
     }
 
     /* Now, any walkable neighbors? */
@@ -237,7 +225,7 @@ d3.csv("stops.txt", function(stops) {
       var insquare = cx > x1 && cx < x2 && cy > y1 && cy < y2;
       if (d.leaf && m < delta && !d.point.visited) {
         var stop = d.point;
-        var dist = current.distance + m * 60; // m mi * 60 min/mi (crawling as the crow flies!)
+        var dist = current.distance + m * 30; // m mi * 30 min/mi (crawling as the crow flies!)
         if (dist < stop.distance) {
           stop.distance = dist;
           stop.prev = {mode: "walk", data: m, stop: current}
@@ -251,7 +239,102 @@ d3.csv("stops.txt", function(stops) {
   }
     
 });
+
+/* Legend */
+
+var lw = 200, lh=20, padding=20;
+
+var legend = d3.select("body")
+  .append("svg")
+  .style({"position":"absolute","top":"20","left":width-lw-2*padding})
+  .attr("width", lw+2*padding)
+  
+legend.append("defs")
+  .html("<linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='0%'> \
+      <stop offset='0%' style='stop-color:" + color(0) + ";stop-opacity:1' /> \
+      <stop offset='50%' style='stop-color:"+ color(40) +";stop-opacity:1' /> \
+      <stop offset='100%' style='stop-color:"+ color(80) +";stop-opacity:1' /> \
+    </linearGradient>");
+
+
+legend.append("rect")
+  .attr("width", lw)
+  .attr("height", lh)
+  .attr("x", padding)
+  .style("fill", "url(#grad)")
+
+
+var lscale = d3.scale.linear()
+  .domain([0, 80])
+  .range([0, lw])
+
+var format = (function() {
+  var time = d3.time.format("%H:%M");
+  var scale = d3.scale.linear().domain([0,80]).range([new Date(0,0,0,8), new Date(0,0,0,9,20)]);
+  function formatter(d) { 
+      var x = scale(d),
+          y = time(new Date(x))
+      return y;
+  }
+  return formatter;
+})();
+
+var axis = d3.svg.axis()
+  .scale(lscale)
+  .ticks(3)
+  .tickFormat(format);
+
+legend.append("g")
+  .attr("class", "axis")
+    .attr("transform", "translate(" + padding + "," + lh +")")
+    .call(axis);
+
+
+/* Utility functions */
+
+function parseTrips(trips) {
+  
+  var tripsByStop = {};
+   
+  for (var i = 0; i < trips.length; i++) {
+      
+    var t = trips[i];
+    if (!tripsByStop[t.stop_id])
+      tripsByStop[t.stop_id] = [t];
+    else 
+      tripsByStop[t.stop_id].push(t);
     
+    if (i+1 < trips.length && t.trip_id == trips[i+1].trip_id)
+      t.next = trips[i+1];
+  }
+  
+  return tripsByStop;
+}
+
+function tripdiff(x, y) {
+  var a = x.arrival_time.split(':').map(parseFloat);
+  var b = y.departure_time.split(':').map(parseFloat);
+  return (b[0] - a[0]) * 60 + (b[1] - a[1]) + (b[2] - a[2])/60;
+}
+
+function getMinutes(x) {
+    var xm = x.split(':').map(parseFloat)
+    return xm[1] + (xm[2]/60)
+}
+
+function printNode(d) {
+  var fmt = format;
+  var p = d.prev.stop
+
+  if (d.prev.mode == "walk")
+      return "<span class='mode'>Walk</span> from <span class='stop'>" + p.stop_name + "</span> to <span class='stop'>" + d.stop_name + "</span>  (" + fmt(p.distance) + " to " + fmt(d.distance) +")";
+  else if (d.prev.mode == "CTA")
+      return "<span class='stop'>" + p.stop_name + "</span> to <span class='stop'>" + d.stop_name + "</span> via <span class='route'>" + routeByTrip[d.prev.data.trip_id] + "</span> (" + fmt(p.distance) + " to " + fmt(d.distance) +")"
+  else if (d.prev.mode == "wait")
+      return "<span class='mode'>Wait</span> at " + d.stop_name + " until " + fmt(d.distance);
+}
+
+
 function pointRectDist (px, py, rx, ry, rwidth, rheight)
 {
   var cx = Math.max(Math.min(px, rx+rwidth ), rx);
@@ -273,6 +356,7 @@ function haversine(lon1, lat1, lon2, lat2) {
   mi = 3956 * c
   return mi
 }
+
 
 
 </script>
