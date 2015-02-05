@@ -1,4 +1,4 @@
-What you're seeing here is an implementation of [Dijktra's algorithm](http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm) in D3, running on data from the CTA. Dijkstra's algorithm is a way to iteratively discover the shortest paths in a graph, given a starting point. Click a node on the map to start Dijkstra's algorithm from that point. Colors expand outward as the algorithm explores the network of bus stops in the city, finding paths and updating them. Distance, in this case, means /time/: starting from my house at 8:00am on a weekday, where can I get to in the next hour?
+What you're seeing here is an implementation of [Dijkstra's algorithm](http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm) in D3, running on data from the CTA. Dijkstra's algorithm is a way to iteratively discover the shortest paths in a graph, given a starting point. Click a node on the map to start Dijkstra's algorithm from that point. Colors expand outward as the algorithm explores the network of bus stops in the city, finding paths and updating them. Distance, in this case, means *time*: starting from my house at 8:00am on a weekday, where can I get to in the next hour?
 
 #### Data
 
