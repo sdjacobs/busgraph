@@ -42,10 +42,10 @@ span.route {
 <script>
 
 /* 
-   TODO: * try out canvas
-         * add time feature
-         * add legend 8:00-9:00
-         * trip recovery
+   TODO: * try out canvas (DONE, it's not much better)
+         * add time feature (DONE)
+         * add legend 8:00-9:00 (DONE [time could be longer])
+         * trip recovery (DONE (could collapse walking))
 */
 
 var width = 900,
@@ -146,9 +146,9 @@ d3.csv("stops.txt", function(stops) {
   //});
 
   dijkstra.on("end", function() {
-    var name = dijkstra.source().name;
+    var name = dijkstra.source().stop_name;
     node.select("title")
-        .text(function(d) { return d.name + "\n(" + d.distance + " miles from " + name + ")" });
+        .text(function(d) { return d.stop_desc + "\n(" + format(d.distance) + " min from " + name + ")" });
   });
 
   node.on("click", function(d) {
@@ -226,9 +226,13 @@ d3.csv("stops.txt", function(stops) {
       if (d.leaf && m < delta && !d.point.visited) {
         var stop = d.point;
         var dist = current.distance + m * 30; // m mi * 30 min/mi (crawling as the crow flies!)
-        if (dist < stop.distance) {
+        if (dist < stop.distance && dist < 80) { /* Just give up at 9:20. No more walking. */
           stop.distance = dist;
           stop.prev = {mode: "walk", data: m, stop: current}
+          if (current.prev && current.prev.mode == "walk") {
+            stop.prev.data += current.prev.data
+            stop.prev.stop = current.prev.stop
+          }
           unvisited.updateItem(stop);
           stop.selection.style("fill", color(stop.distance));
         }
