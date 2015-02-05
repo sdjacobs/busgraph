@@ -11,7 +11,9 @@ The data comes from the CTA's General Transit Feed Specification, available [her
 
 `routes.txt` and `trips.txt` are not strictly required for the algorithm; they just allow us to map trip IDs like "440081069971" to human-readable route names like "50 Damen".
 
-Unedited, `stop_times.txt` has over 3 million entries and is 182 MB. This is just too big for a web app-style presentation, so 
+Unedited, `stop_times.txt` has over 3 million entries and is 182 MB. This is just too big for a web app-style presentation, so I cut it down to all trips with arrivals between 8:00am and 9:00am (`stop_times_8.txt`), using the command
+
+    awk -F, 'NR == 1 {print} $2 ~ /^08/' stop_times.txt
 
 # Algorithm
 
