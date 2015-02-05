@@ -141,9 +141,9 @@ d3.csv("stops.txt", function(stops) {
       .nodes(stops)
       .update(update); /* Custom node updating function */
  
-  //dijkstra.on("tick", function() {
-  //    node.style("fill", function(d) { return color(d.distance); });
-  //});
+  dijkstra.on("tick", function() {
+      node.style("fill", function(d) { return color(d.distance); });
+  });
 
   dijkstra.on("end", function() {
     var name = dijkstra.source().stop_name;
@@ -212,7 +212,6 @@ d3.csv("stops.txt", function(stops) {
             var wait = {distance: depart, stop_name: current.stop_name, prev: {mode: "wait", stop: current} } // ghost node!
             stop.prev = {mode: "CTA", data: curr, stop: wait}
             unvisited.updateItem(stop);
-            stop.selection.style("fill", color(stop.distance));
         }
         curr = next;
       }
@@ -234,7 +233,6 @@ d3.csv("stops.txt", function(stops) {
             stop.prev.stop = current.prev.stop
           }
           unvisited.updateItem(stop);
-          stop.selection.style("fill", color(stop.distance));
         }
       }
       return !insquare && m >= delta;
@@ -313,12 +311,6 @@ function parseTrips(trips) {
   }
   
   return tripsByStop;
-}
-
-function tripdiff(x, y) {
-  var a = x.arrival_time.split(':').map(parseFloat);
-  var b = y.departure_time.split(':').map(parseFloat);
-  return (b[0] - a[0]) * 60 + (b[1] - a[1]) + (b[2] - a[2])/60;
 }
 
 function getMinutes(x) {
