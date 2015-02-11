@@ -50,6 +50,10 @@ span.route {
     clear: left;
 }
 
+h1 {
+    margin-left: 1%;
+}
+
 body {
     font-family: Arial;
     background: none repeat scroll 0% 0% #F2F2F2;
@@ -58,6 +62,7 @@ body {
 </style>
 <title>Dijkstra takes the bus</title>
 <body>
+<h1>Dijkstra takes the bus</h1>
 <div id="viz"></div>
 <div id="content"></div>
 <script src="http://d3js.org/d3.v3.min.js"></script>
@@ -67,18 +72,10 @@ body {
 <script src="dijkstra.js"></script>
 <script>
 
-/* 
-   TODO: * try out canvas (DONE, it's not much better)
-         * add time feature (DONE)
-         * add legend 8:00-9:00 (DONE [time could be longer])
-         * trip recovery (DONE (could collapse walking))
-*/
-
 var width = parseInt(d3.select("#viz").style("width")),
   height = 500;
 
-var center = [-87.6847, 41.8369], scale = 70000;
-
+var center = [-87.5, 41.87], scale = 70000;
   
 var color = d3.scale.linear()
   .domain([0, 40, 80])
@@ -279,11 +276,12 @@ d3.csv("stops.txt", function(stops) {
 
 /* Legend */
 
-var lw = 200, lh=20, padding=20;
+var lw = 200, lh=20, padding=20,
+    ltop = svg.node().getBoundingClientRect().top;
 
 var legend = d3.select("body")
   .append("svg")
-  .style({"position":"absolute","top":"30px","left":(width-lw-2*padding)+"px"})
+  .style({"position":"absolute","top":(ltop+30)+"px","left":(width-lw-2*padding)+"px"})
   .attr("width", lw+2*padding)
   
 legend.append("linearGradient")
