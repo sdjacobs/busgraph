@@ -22,3 +22,7 @@ Each node on the map is a transit stop listed in `stops.txt`. A node's neighbors
 #### More...
 
 This project is built with [D3](https://d3js.org) and [heap](https://www.npmjs.com/package/heap), a Javascript priority queue implementation. It builds on my [d3-mapzoom](http://bl.ocks.org/sdjacobs/9ce5fadce234497dc592) plugin, and my experiments with D3 Dijkstra implementations [here](http://bl.ocks.org/sdjacobs/3900867adc06c7680d48) and [here](http://bl.ocks.org/sdjacobs/c2ee01307cdeceb19f9d).
+
+### Notes
+
+http://www.citylab.com/commute/2015/02/every-city-should-have-something-like-san-franciscos-mass-transit-access-map/385336/

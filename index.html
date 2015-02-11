@@ -103,7 +103,7 @@ d3.csv("stops.txt", function(stops) {
     
   node
     .append("title")
-    .text(function(d) { return d.stop_desc })
+    .text(function(d) { return d.stop_desc || d.stop_name })
 
   mapzoom.addLayer(function() {
     node
@@ -140,15 +140,22 @@ d3.csv("stops.txt", function(stops) {
   var dijkstra = d3.dijkstra()
       .nodes(stops)
       .update(update); /* Custom node updating function */
- 
+
+  var progress = legend.append("rect")
+      .attr({width: 0, height: 10, x: 20, y: 50, style: "fill:white;"})
+  var wscale = d3.scale.linear()
+    .domain([1, stops.length])
+    .range([1, 200])
+  var i = 1;
   dijkstra.on("tick", function() {
-      node.style("fill", function(d) { return color(d.distance); });
+    progress.attr("width", wscale(i++));
   });
 
   dijkstra.on("end", function() {
     var name = dijkstra.source().stop_name;
     node.select("title")
-        .text(function(d) { return d.stop_desc + "\n(" + format(d.distance) + " min from " + name + ")" });
+        .text(function(d) { return (d.stop_desc || d.stop_name) + "\n(" + d.distance + " min from " + name + ")" });
+    progress.attr("width", 200);
   });
 
   node.on("click", function(d) {
@@ -212,6 +219,7 @@ d3.csv("stops.txt", function(stops) {
             var wait = {distance: depart, stop_name: current.stop_name, prev: {mode: "wait", stop: current} } // ghost node!
             stop.prev = {mode: "CTA", data: curr, stop: wait}
             unvisited.updateItem(stop);
+            stop.selection.style("fill", color(stop.distance));
         }
         curr = next;
       }
@@ -233,6 +241,7 @@ d3.csv("stops.txt", function(stops) {
             stop.prev.stop = current.prev.stop
           }
           unvisited.updateItem(stop);
+          stop.selection.style("fill", color(stop.distance));
         }
       }
       return !insquare && m >= delta;
@@ -248,15 +257,17 @@ var lw = 200, lh=20, padding=20;
 
 var legend = d3.select("body")
   .append("svg")
-  .style({"position":"absolute","top":"20","left":width-lw-2*padding})
+  .style({"position":"absolute","top":"20px","left":(width-lw-2*padding)+"px"})
   .attr("width", lw+2*padding)
   
-legend.append("defs")
-  .html("<linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='0%'> \
-      <stop offset='0%' style='stop-color:" + color(0) + ";stop-opacity:1' /> \
-      <stop offset='50%' style='stop-color:"+ color(40) +";stop-opacity:1' /> \
-      <stop offset='100%' style='stop-color:"+ color(80) +";stop-opacity:1' /> \
-    </linearGradient>");
+legend.append("linearGradient")
+    .attr({"id":"grad", "x1": "0%", "y1": "0%", "x2":"100%", "y2":"0%"})
+    .selectAll("stop")
+    .data([0, 40, 80]).enter()
+    .append("stop")
+    .attr("offset", function(d) { return (d*5/4)+"%" })
+    .style("stop-opacity", "1")
+    .style("stop-color", color)
 
 
 legend.append("rect")
