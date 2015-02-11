@@ -31,9 +31,22 @@ span.route {
     fill: white;
 }
 
+#viz {
+    float: left;
+    width: 60%;
+}
+
+#content {
+    float: left;
+    width: 30%;
+    margin: 3%;
+    padding: 1%;
+    background-color: lightgrey;
+}
 </style>
 <body>
-<div id="status"></div>
+<div id="viz"></div>
+<div id="content"></div>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="http://d3js.org/d3.geo.tile.v0.min.js"></script>
 <script src="d3.mapzoom.js"></script>
@@ -48,8 +61,10 @@ span.route {
          * trip recovery (DONE (could collapse walking))
 */
 
-var width = 900,
-  height = 600;
+var width = parseInt(d3.select("#viz").style("width")),
+  height = 500;
+
+console.log(width)
 
 var center = [-87.6847, 41.8369], scale = 70000;
 
@@ -61,7 +76,7 @@ var mapzoom = d3.mapzoom()
   .center(center)
   .scale(scale)
 
-var svg = d3.select("body").append("svg")
+var svg = d3.select("#viz").append("svg")
   .attr("width", width)
   .attr("height", height)
   .call(mapzoom);
@@ -159,7 +174,7 @@ d3.csv("stops.txt", function(stops) {
   });
 
   node.on("click", function(d) {
-    var content = d3.select("body").append("div")
+    var content = d3.select("#content")
     content.append("div").html("<b>Start:</b> " + d.stop_desc);
     content = content.append("div")
     node.on("click", function(dst) {
