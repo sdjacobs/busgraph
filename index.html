@@ -398,7 +398,7 @@ function haversine(lon1, lat1, lon2, lat2) {
 
 <p>First of all, it's a map of Chicago. Each dot is a CTA stop. Click a dot. Now, you're computing all the distances from that dot, using <a href="http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm">Dijkstra's algorithm</a>, a classic algorithm in computer science. Dijkstra's algorithm is a way to iteratively discover the shortest paths in a graph, given a starting point.</p>
 
-<p>The result of computing the algorithm is an <a href="http://www.citylab.com/commute/2015/02/every-city-should-have-something-like-san-franciscos-mass-transit-access-map/385336/">access map</a> -- a view into how much of the city you can reach in a given amount of time. But unlike a normal access map, where you'd almost certainly precompute all possible paths, the <em>process</em> of computing is given the same emphasis as the <em>result</em>. The data is almost entirely unprocessed from what's supplied by the CTA, and all the computation happens in your browser (I've found that Google Chrome works the best). I make no guarantees for the real-world accuracy of this information -- so, please use this page to understand Dijkstra and to see a pretty picture of Chicago, but not as a trip planner!</p>
+<p>The result of computing the algorithm is an <a href="http://www.citylab.com/commute/2015/02/every-city-should-have-something-like-san-franciscos-mass-transit-access-map/385336/">access map</a> -- a view into how much of the city you can reach in a given amount of time. But unlike a normal access map, where you'd almost certainly precompute all possible paths, this presentation gives the <em>process</em> of computing the same emphasis as the <em>result</em>. The data is almost entirely unchanged from what's supplied by the CTA, and all the computation happens in your browser (I've found that Google Chrome works the best). I make no guarantees for the real-world accuracy of this information -- so, please use this page to understand Dijkstra and to see a pretty picture of Chicago, but not as a trip planner!</p>
 
 <p>Click a node on the map to start Dijkstra's algorithm from that point. After the computation begins, click another node to see the current shortest path. Colors expand outward as the algorithm explores the network of bus stops in the city, finding paths and updating them. Distance, in this case, means <em>time</em>: starting from my house at 8:00am on a weekday, where can I get to in the next hour?</p>
 
@@ -418,6 +418,26 @@ function haversine(lon1, lat1, lon2, lat2) {
 <p>Unedited, "stop_times.txt" has over 3 million entries and is 182 MB. This is just too big for a web app-style presentation, so I cut it down to all trips with arrivals between 8:00am and 9:00am (<a href="stop_times_8.txt">stop_times_8.txt</a>).</p>
 
 <h4>Algorithm</h4>
+
+<p>Dijkstra's algorithm, in pseudocode:</p>
+
+<pre>
+Given a graph G with nodes V and edges E:
+
+Let v = starting node,
+    S = the unvisited nodes = V,
+    D(w) = distance from v to w, initially infinity for all w != v. D(v) = 0,
+    N(w) = neighbors of w = { x : (w, x) in E },
+    length(x, y) = length of the edge between x and y.
+
+while S is not empty:
+    w = the node in S with the smallest distance from v (initially, v).
+    for each x in N(w) where x is unvisited:
+        set D(x) = min(D(x), D(w) + length(w,x))
+    Mark w visited and remove w from S.
+</pre>
+
+<p>Conceptually, the algorithm is simple. We start knowing nothing, except that the closest node to <em>v</em> is <em>v</em> itself. We look at nodes right next to <em>v</em>, and update what we know. Then, we move to nodes close to <em>those</em> nodes, rinse, lather, and repeat. We keep going until we find we've explored the entire graph. </p>
 
 <p>Each node on the map is a transit stop listed in "stops.txt". A node's neighbors can be stops that are further along on a route, or bus stops that are "walking distance." I'm using a dumb appoximation for the amount of time to walk somewhere -- we calculate the distance between two points, as the crow flies, and then say we can walk that at 2 mph. Stops are only walkable if they're within a mile of each other.</p>
 
