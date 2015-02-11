@@ -181,7 +181,7 @@ d3.csv("stops.txt", function(stops) {
     var name = dijkstra.source().stop_name;
     node.select("title")
         .text(function(d) { return (d.stop_desc || d.stop_name) + "\n(" + d.distance + " min from " + name + ")" });
-    progress.attr("width", 200);
+    progress.transition().attr("width", 200);
   });
 
   node.on("click", function(d) {
@@ -409,19 +409,19 @@ function haversine(lon1, lat1, lon2, lat2) {
 <p>The data comes from the CTA's General Transit Feed Specification, available <a href="http://www.transitchicago.com/developers/gtfs.aspx">here</a>:</p>
 
 <ul>
-<li><code>stops.txt</code>: list of bus and train stops</li>
-<li><code>stop_times.txt</code>: scheduled arrival times and departure times for every stop</li>
-<li><code>routes.txt</code>: list of CTA routes</li>
-<li><code>trips.txt</code>: list of CTA trips.</li>
+<li><a href="stops.txt">stops.txt</a>: list of bus and train stops</li>
+<li><b>stop_times.txt</b>: scheduled arrival times and departure times for every stop</li>
+<li><a href="routes.txt">routes.txt</a>: list of CTA routes</li>
+<li><a href="trips.txt">trips.txt</a>: list of CTA trips.</li>
 </ul>
 
-<p><code>routes.txt</code> and <code>trips.txt</code> are not strictly required for the algorithm; they just allow us to map trip IDs like "440081069971" to human-readable route names like "50 Damen".</p>
+<p>"routes.txt" and "trips.txt" are not strictly required for the algorithm; they just allow us to map trip IDs like "440081069971" to human-readable route names like "50 Damen".</p>
 
-<p>Unedited, <code>stop_times.txt</code> has over 3 million entries and is 182 MB. This is just too big for a web app-style presentation, so I cut it down to all trips with arrivals between 8:00am and 9:00am (<code>stop_times_8.txt</code>).</p>
+<p>Unedited, "stop_times.txt" has over 3 million entries and is 182 MB. This is just too big for a web app-style presentation, so I cut it down to all trips with arrivals between 8:00am and 9:00am (<a href="stop_times_8.txt">stop_times_8.txt</a>).</p>
 
 <h4>Algorithm</h4>
 
-<p>Each node on the map is a transit stop listed in <code>stops.txt</code>. A node's neighbors can be stops that are further along on a route, or bus stops that are "walking distance." I'm using a crappy appoximation for the amount of time to walk somewhere -- we calculate the distance between two points, as the crow flies, and then say we can walk that at 2 mph. Stops are only walkable if they're within a mile of each other.</p>
+<p>Each node on the map is a transit stop listed in "stops.txt". A node's neighbors can be stops that are further along on a route, or bus stops that are "walking distance." I'm using a dumb appoximation for the amount of time to walk somewhere -- we calculate the distance between two points, as the crow flies, and then say we can walk that at 2 mph. Stops are only walkable if they're within a mile of each other.</p>
 
 <h4>More...</h4>
 
