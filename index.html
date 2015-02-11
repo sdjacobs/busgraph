@@ -34,15 +34,26 @@ span.route {
 #viz {
     float: left;
     width: 60%;
+    margin: 1%;
 }
 
 #content {
     float: left;
     width: 30%;
-    margin: 3%;
-    padding: 1%;
-    background-color: lightgrey;
+    margin: 2%;
 }
+
+#readme {
+    width: 80%;
+    overflow: hidden;
+    margin: 10%;
+}
+
+body {
+    font-family: Arial;
+    background: none repeat scroll 0% 0% #F2F2F2;
+}
+
 </style>
 <body>
 <div id="viz"></div>
@@ -63,8 +74,6 @@ span.route {
 
 var width = parseInt(d3.select("#viz").style("width")),
   height = 500;
-
-console.log(width)
 
 var center = [-87.6847, 41.8369], scale = 70000;
 
@@ -187,10 +196,10 @@ d3.csv("stops.txt", function(stops) {
           src = src.prev.stop;
         }
 
-        content.append("div")
-            .selectAll("div")
+        content.append("div").append("ul")
+            .selectAll("li")
             .data(trips).enter()
-            .append("div")
+            .append("li")
             .html(printNode)
     });
 
@@ -272,7 +281,7 @@ var lw = 200, lh=20, padding=20;
 
 var legend = d3.select("body")
   .append("svg")
-  .style({"position":"absolute","top":"20px","left":(width-lw-2*padding)+"px"})
+  .style({"position":"absolute","top":"30px","left":(width-lw-2*padding)+"px"})
   .attr("width", lw+2*padding)
   
 legend.append("linearGradient")
@@ -383,3 +392,37 @@ function haversine(lon1, lat1, lon2, lat2) {
 
 </script>
 
+<div id="readme">
+
+<p>What am I seeing here?</p>
+
+<p>This is an implementation of <a href="http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm">Dijkstra's algorithm</a>, a classic algorithm in computer science, written in Javascript/D3 and running on data from the CTA. Dijkstra's algorithm is a way to iteratively discover the shortest paths in a graph, given a starting point.</p>
+
+<p>The result of computing the algorithm is an <a href="http://www.citylab.com/commute/2015/02/every-city-should-have-something-like-san-franciscos-mass-transit-access-map/385336/">access map</a> -- a view into how much of the city you can reach in a given amount of time. But unlike a normal access map, where you'd almost certainly precompute all possible paths, the <em>process</em> of computing is given the same emphasis as the <em>result</em>. The data is almost entirely unprocessed from what's supplied by the CTA, and all the computation happens in your browser (I've found that Google Chrome works the best). I make no guarantees for the real-world accuracy of this information -- so, please use this page to understand Dijkstra, but not as a trip planner!</p>
+
+<p>Click a node on the map to start Dijkstra's algorithm from that point. After the computation begins, click another node to see the current shortest path. Colors expand outward as the algorithm explores the network of bus stops in the city, finding paths and updating them. Distance, in this case, means <em>time</em>: starting from my house at 8:00am on a weekday, where can I get to in the next hour?</p>
+
+<h4>Data</h4>
+
+<p>The data comes from the CTA's General Transit Feed Specification, available <a href="http://www.transitchicago.com/developers/gtfs.aspx">here</a>:</p>
+
+<ul>
+<li><code>stops.txt</code>: list of bus and train stops</li>
+<li><code>stop_times.txt</code>: scheduled arrival times and departure times for every stop</li>
+<li><code>routes.txt</code>: list of CTA routes</li>
+<li><code>trips.txt</code>: list of CTA trips.</li>
+</ul>
+
+<p><code>routes.txt</code> and <code>trips.txt</code> are not strictly required for the algorithm; they just allow us to map trip IDs like "440081069971" to human-readable route names like "50 Damen".</p>
+
+<p>Unedited, <code>stop_times.txt</code> has over 3 million entries and is 182 MB. This is just too big for a web app-style presentation, so I cut it down to all trips with arrivals between 8:00am and 9:00am (<code>stop_times_8.txt</code>).</p>
+
+<h4>Algorithm</h4>
+
+<p>Each node on the map is a transit stop listed in <code>stops.txt</code>. A node's neighbors can be stops that are further along on route, or bus stops that are "walking distance." I'm using a crappy appoximation for the amount of time to walk somewhere -- we calculate the distance between two points, as the crow flies, and then say we can walk that at 2 mph. Stops are only walkable if they're within a mile of each other.</p>
+
+<h4>More...</h4>
+
+<p>This project is built with <a href="https://d3js.org">D3</a> and <a href="https://www.npmjs.com/package/heap">heap</a>, a Javascript priority queue implementation. It builds on my <a href="http://bl.ocks.org/sdjacobs/9ce5fadce234497dc592">d3-mapzoom</a> plugin, and my experiments with D3/Dijkstra implementations <a href="http://bl.ocks.org/sdjacobs/3900867adc06c7680d48">here</a> and <a href="http://bl.ocks.org/sdjacobs/c2ee01307cdeceb19f9d">here</a>.</p>
+
+</div>
