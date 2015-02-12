@@ -111,10 +111,13 @@ d3.csv("stops.txt", function(stops) {
 
   var projection = mapzoom.projection(), 
     stopsByID = {}
+
+  var stops = stops.filter(function(d) { return d["location_type"] == "0" });  
   
   stops.forEach(function(d, i) {
     d.coord = [+d.stop_lon, +d.stop_lat]
     stopsByID[d.stop_id] = d;
+    d.stop_desc = d.stop_desc || d.stop_name;
   });
 
   var node = svg.append("g").selectAll(".node")
