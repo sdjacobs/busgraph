@@ -107,18 +107,24 @@ d3.csv("routes.txt", function(routes) {
   });
 });
 
-d3.csv("stops.txt", function(stops) { 
+d3.csv("stops.txt", function(data) {
 
-  var projection = mapzoom.projection(), 
-    stopsByID = {}
-
-  var stops = stops.filter(function(d) { return d["location_type"] == "0" });  
-  
-  stops.forEach(function(d, i) {
-    d.coord = [+d.stop_lon, +d.stop_lat]
-    stopsByID[d.stop_id] = d;
-    d.stop_desc = d.stop_desc || d.stop_name;
+  var stops = [], stopsByName = {}, stopsByID = {};
+  data.forEach(function(d) {
+    if (stopsByName[d.stop_name] == undefined) {
+      stopsByName[d] = d
+      d.stop_id = [d.stop_id];
+      d.coord = [+d.stop_lon, +d.stop_lat]
+      stopsByID[d.stop_id] = d;
+      stops.push(d);
+    }
+    else {
+      stopsByName[d.stop_name].stop_id.push(d.stop_id)
+      stopsByID[d.stop_id] = stopsByName[d.stop_name];
+    }
   });
+
+  var projection = mapzoom.projection();
 
   var node = svg.append("g").selectAll(".node")
     .data(stops)
@@ -129,7 +135,7 @@ d3.csv("stops.txt", function(stops) {
     
   node
     .append("title")
-    .text(function(d) { return d.stop_desc || d.stop_name })
+    .text(function(d) { return d.stop_name })
 
   mapzoom.addLayer(function() {
     node
@@ -150,11 +156,17 @@ d3.csv("stops.txt", function(stops) {
     node.attr("r", 2)
   });
 
-  var tripsByStop, trips; /* These variables are populated asynchronously (but not used til click) */
+  var trips, tripsByStop = {}; /* These variables are populated asynchronously (but not used til click) */
   
   d3.csv("stop_times_8.txt", function(data) {
     trips = data;
-    tripsByStop = parseTrips(trips); 
+    var tripsByID = parseTrips(trips);
+    d3.entries(tripsByID).forEach(function(d) {
+      var stop = stopsByID[d.key];
+      if (tripsByStop[stop.stop_name] == undefined)
+        tripsByStop[stop.stop_name] = []
+      Array.prototype.push.apply(tripsByStop[stop.stop_name], d.value);
+    });
   });
 
   var quadtree = d3.geom.quadtree()
@@ -214,11 +226,11 @@ d3.csv("stops.txt", function(stops) {
   function update(current, unvisited) {
     
     /* First, check neighbors reachable by CTA */
-    var mytrips = tripsByStop[current.stop_id];
+    var mytrips = tripsByStop[current.stop_name];
     
-
     if (!mytrips)
       return;
+    
     for (var i = 0; i < mytrips.length; i++) {
       var start = mytrips[i], curr = start;
       if (!start)
