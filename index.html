@@ -111,7 +111,8 @@ d3.csv("stops.txt", function(data) {
 
   var stops = [], stopsByName = {}, stopsByID = {};
   data.forEach(function(d) {
-    if (stopsByName[d.stop_name] == undefined) {
+    d.stop_desc = d.stop_desc || d.stop_name;
+    if (stopsByName[d.stop_desc] == undefined) {
       stopsByName[d] = d
       d.stop_id = [d.stop_id];
       d.coord = [+d.stop_lon, +d.stop_lat]
@@ -119,8 +120,8 @@ d3.csv("stops.txt", function(data) {
       stops.push(d);
     }
     else {
-      stopsByName[d.stop_name].stop_id.push(d.stop_id)
-      stopsByID[d.stop_id] = stopsByName[d.stop_name];
+      stopsByName[d.stop_desc].stop_id.push(d.stop_id)
+      stopsByID[d.stop_id] = stopsByName[d.stop_desc];
     }
   });
 
@@ -135,7 +136,7 @@ d3.csv("stops.txt", function(data) {
     
   node
     .append("title")
-    .text(function(d) { return d.stop_name })
+    .text(function(d) { return d.stop_desc })
 
   mapzoom.addLayer(function() {
     node
@@ -163,9 +164,9 @@ d3.csv("stops.txt", function(data) {
     var tripsByID = parseTrips(trips);
     d3.entries(tripsByID).forEach(function(d) {
       var stop = stopsByID[d.key];
-      if (tripsByStop[stop.stop_name] == undefined)
-        tripsByStop[stop.stop_name] = []
-      Array.prototype.push.apply(tripsByStop[stop.stop_name], d.value);
+      if (tripsByStop[stop.stop_desc] == undefined)
+        tripsByStop[stop.stop_desc] = []
+      Array.prototype.push.apply(tripsByStop[stop.stop_desc], d.value);
     });
   });
 
@@ -190,9 +191,9 @@ d3.csv("stops.txt", function(data) {
   });
 
   dijkstra.on("end", function() {
-    var name = dijkstra.source().stop_name;
+    var name = dijkstra.source().stop_desc;
     node.select("title")
-        .text(function(d) { return (d.stop_desc || d.stop_name) + "\n(" + d.distance + " min from " + name + ")" });
+        .text(function(d) { return d.stop_desc + "\n(" + d.distance + " min from " + name + ")" });
     progress.transition().attr("width", 200);
   });
 
@@ -226,7 +227,7 @@ d3.csv("stops.txt", function(data) {
   function update(current, unvisited) {
     
     /* First, check neighbors reachable by CTA */
-    var mytrips = tripsByStop[current.stop_name];
+    var mytrips = tripsByStop[current.stop_desc];
     
     if (!mytrips)
       return;
@@ -254,7 +255,7 @@ d3.csv("stops.txt", function(data) {
         if (arrival < stop.distance) {
             stop.distance = arrival;
             /* Current -> Wait -> Stop */
-            var wait = {distance: depart, stop_name: current.stop_name, prev: {mode: "wait", stop: current} } // ghost node!
+            var wait = {distance: depart, stop_name: current.stop_desc, prev: {mode: "wait", stop: current} } // ghost node!
             stop.prev = {mode: "CTA", data: curr, stop: wait}
             unvisited.updateItem(stop);
             stop.selection.style("fill", color(stop.distance));
