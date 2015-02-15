@@ -12,6 +12,14 @@ d3.dijkstra = function () {
     };
 
     dijkstra.run = function (src) {
+
+        /* Stop functionality */
+        var stop = false;
+        dijkstra.stop = function() {
+            stop = true;
+            return dijkstra;
+        }
+
         source = src;
         var unvisited = new Heap(function(a, b) { return a.distance - b.distance });
 
@@ -31,7 +39,7 @@ d3.dijkstra = function () {
         
             update(current, unvisited);
 
-            if (unvisited.length == 0 || current.distance == Infinity) {
+            if (unvisited.length == 0 || current.distance == Infinity || stop) {
                 dispatch.end()
                 return true;
             }

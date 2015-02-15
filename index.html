@@ -72,6 +72,22 @@ body {
 <script src="dijkstra.js"></script>
 <script>
 
+/* "Loading..." message. Call this function to remove the message. */
+var stopLoading = (function() {
+    var stop = false, text = "Loading";
+    function loading() {
+      text = text.length < 10 ? text + "." : "Loading";
+      if (!stop) {
+        d3.select("#content").text(text);
+        setTimeout(loading, 500);
+      }
+      else
+        d3.select("#content").text("");
+    }
+    loading();
+    return function() { stop = true; }
+})()
+
 var width = parseInt(d3.select("#viz").style("width")),
   height = 500;
 
@@ -168,6 +184,7 @@ d3.csv("stops.txt", function(data) {
         tripsByStop[stop.stop_desc] = []
       Array.prototype.push.apply(tripsByStop[stop.stop_desc], d.value);
     });
+    stopLoading()
   });
 
   var quadtree = d3.geom.quadtree()
@@ -190,36 +207,63 @@ d3.csv("stops.txt", function(data) {
     progress.attr("width", wscale(i++));
   });
 
-  dijkstra.on("end", function() {
+  var content = d3.select("#content");
+  
+  function writePath(dst) {
+    content.selectAll("div").remove();
+    var src = dst, trips = [];
+    content.append("div").html("<b>End:</b> " + dst.stop_desc);
+
+    while(src.prev) {
+      trips.unshift(src);
+      src = src.prev.stop;
+    }
+
+    content.append("div").append("ul")
+      .selectAll("li")
+      .data(trips).enter()
+      .append("li")
+      .html(printNode)
+  }
+
+
+  function startDijkstra(d) {
+    content = d3.select("#content")
+    content.selectAll("*").remove()
+    content.append("div").html("<b>Start:</b> " + d.stop_desc);
+    content = content.append("div")
+    node.on("click", writePath);
+    dijkstra.on("end", endDijkstra); // gets removed by reset button
+    i = 0;
+    dijkstra.start(d);
+  }
+
+  function endDijkstra() {
     var name = dijkstra.source().stop_desc;
     node.select("title")
         .text(function(d) { return d.stop_desc + "\n(" + d.distance + " min from " + name + ")" });
     progress.transition().attr("width", 200);
-  });
+  }
 
-  node.on("click", function(d) {
-    var content = d3.select("#content")
-    content.append("div").html("<b>Start:</b> " + d.stop_desc);
-    content = content.append("div")
-    node.on("click", function(dst) {
-        content.selectAll("div").remove();
-        var src = dst, trips = [];
-        content.append("div").html("<b>End:</b> " + dst.stop_desc);
 
-        while(src.prev) {
-          trips.unshift(src);
-          src = src.prev.stop;
-        }
+  node.on("click", startDijkstra);
 
-        content.append("div").append("ul")
-            .selectAll("li")
-            .data(trips).enter()
-            .append("li")
-            .html(printNode)
-    });
-
-    dijkstra.start(d);
-  });
+  d3.select("#viz")
+      .append("a")
+      .attr("href", "#")
+      .style({float: "right", "margin-right": "1%", "font-size": "10px"})
+      .text("Reset")
+      .on("click", function() {
+        progress.attr("width", 0)
+        node.style("fill", "grey")
+            .on("click", startDijkstra)
+        /* And if we haven't ended yet... */
+        dijkstra.on("end", function() {
+          progress.attr("width", 0)
+          node.style("fill", "grey")
+        });
+        dijkstra.stop();
+       });
 
 
   /* How do you update a node? */
