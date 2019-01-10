@@ -5,7 +5,8 @@ d3.mapzoom = function() {
 
     var projection = undefined,
         zoom = undefined,
-        tile = undefined
+        tile = undefined,
+        access_token = "pk.eyJ1Ijoic2lkYWphIiwiYSI6ImNpeDhqbW1vZTAwMW8yeW51MWRqdWIxODYifQ.3g6x7ykgkMpIbWIV040WOA";
 
     var layers = []
 
@@ -104,7 +105,7 @@ d3.mapzoom = function() {
                 .selectAll("image")
              .data(tiles)
            .enter().append("image")
-              .attr("xlink:href", function(d) { return "http://" + prefixes[Math.random() * prefixes.length | 0] + "." + url + d[2] + "/" + d[0] + "/" + d[1] + ".png"; })
+              .attr("xlink:href", function(d) { return "http://" + (prefixes ? prefixes[Math.random() * prefixes.length | 0] + "." : "") + url + "/" + d[2] + "/" + d[0] + "/" + d[1] + ".png?access_token=" + access_token; })
               .attr("width", Math.round(tiles.scale))
               .attr("height", Math.round(tiles.scale))
               .attr("x", function(d) { return Math.round((d[0] + tiles.translate[0]) * tiles.scale); })

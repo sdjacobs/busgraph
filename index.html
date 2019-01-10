@@ -107,7 +107,7 @@ var svg = d3.select("#viz").append("svg")
 
 var frame = svg.append("g")
 
-mapzoom.addTileLayer(frame, "tiles.mapbox.com/v3/examples.map-zr0njcqy/", "abcd");
+mapzoom.addTileLayer(frame, "api.mapbox.com/v4/mapbox.streets");
 
 var routeByTrip = {}
 d3.csv("routes.txt", function(routes) {
